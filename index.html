@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>মশা তাড়াও গেম</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      touch-action: manipulation;
+    }
+    body {
+      background-color: #111;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      color: #fff;
+      overflow-x: hidden;
+    }
+    #game-container {
+      width: 100vw;
+      max-width: 900px;
+      height: 520px;
+      max-height: 85vh;
+      background-image: url('doge-bg.gif'), url('doge-bg.jpg'), url('doge-bg.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      border: 3px solid #455a64;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      margin: 10px auto;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      cursor: crosshair;
+    }
+    #dog-img {
+      width: 580px;
+      max-width: 80%;
+      height: auto;
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      pointer-events: none;
+    }
+    /* এন্ডিং ইমেজ পুরো স্ক্রিন জুড়ে দেখানোর জন্য স্টাইল */
+    .ending-screen {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      position: absolute !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      transform: none !important;
+      object-fit: cover;
+      z-index: 50;
+    }
+    .mosquito {
+      width: 90px;
+      height: 75px;
+      position: absolute;
+      cursor: pointer;
+      z-index: 10;
+      will-change: left, top;
+    }
+    .mosquito img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      display: block;
+    }
+    #info-bar {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      max-width: 900px;
+      margin: 5px auto;
+      font-size: 20px;
+      font-weight: bold;
+      color: #80cbc4;
+    }
+    #lives {
+      color: #ff5252;
+      font-size: 22px;
+    }
+    .hit-flash {
+      background-color: rgba(255, 0, 0, 0.2) !important;
+    }
+    .bite-text {
+      position: absolute;
+      color: #ff5252;
+      font-weight: bold;
+      font-size: 24px;
+      animation: fadeUp 0.6s forwards;
+      z-index: 20;
+    }
+    @keyframes fadeUp {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-30px); }
+    }
+
+    #start-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #start-btn {
+      padding: 15px 40px;
+      font-size: 22px;
+      font-weight: bold;
+      background-color: #ff9800;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+    }
+
+    #rotate-notice {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      z-index: 999;
+      color: #ff9800;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      font-size: 20px;
+    }
+
+    @media screen and (max-width: 768px) and (orientation: portrait) {
+      #rotate-notice {
+        display: flex;
+      }
+    }
+
+    @media (max-width: 600px) {
+      #game-container {
+        height: 80vh;
+      }
+      .mosquito {
+        width: 75px;
+        height: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="rotate-notice">
+    <h2>📱 ভালো অভিজ্ঞতার জন্য ফোনটি ঘুরিয়ে (Landscape Mode) ধরুন!</h2>
+  </div>
+
+  <h2>মশার হাত থেকে কুকুরকে বাঁচাও!</h2>
+
+  <div id="info-bar">
+    <div>মশা মেরেছেন: <span id="score">০</span></div>
+    <div>লাইফ: <span id="lives">❤️❤️❤️</span></div>
+  </div>
+
+  <div id="game-container">
+    <div id="start-overlay">
+      <h1 style="color: #fff; margin-bottom: 20px;">গেম খেলতে তৈরি?</h1>
+      <button id="start-btn">গেম শুরু করুন ▶</button>
+    </div>
+
+    <img id="dog-img" src="doge-sleeping.gif" alt="Dog">
+  </div>
+
+  <script>
+    const container = document.getElementById("game-container");
+    const scoreDisplay = document.getElementById("score");
+    const livesDisplay = document.getElementById("lives");
+    const dogImg = document.getElementById("dog-img");
+    const startOverlay = document.getElementById("start-overlay");
+    const startBtn = document.getElementById("start-btn");
+
+    const p1 = new Image(); p1.src = "mos-dead-left.gif";
+    const p2 = new Image(); p2.src = "mos-dead-right.gif";
+    const p3 = new Image(); p3.src = "ending.jfif";
+
+    const snoringSound = new Audio("snoring.mp3");
+    snoringSound.loop = true;
+
+    const flyingSound = new Audio("Mosquito-flying-sounds-in-10-minutes_007_128k.mp3");
+    flyingSound.loop = true;
+
+    const endingSound = new Audio("ending-laughing.mp3");
+    const slapSound = new Audio("slap.mp3");
+
+    const killSounds = [
+      new Audio("killing-1.mp3"),
+      new Audio("killing-2.mp3"),
+      new Audio("killing-3.mp3"),
+      new Audio("killing-4.mp3"),
+      new Audio("killing-5.mp3"),
+      new Audio("killing-6.mp3")
+    ];
+
+    let killSoundIndex = 0;
+    let score = 0;
+    let lives = 3;
+    let isGameOver = false;
+    let gameStarted = false;
+    let mosquitoInterval;
+
+    function safePlay(audioObj) {
+      if (!audioObj) return;
+      try {
+        audioObj.currentTime = 0;
+        let p = audioObj.play();
+        if (p !== undefined) p.catch(() => {});
+      } catch(e) {}
+    }
+
+    function handleStartGame(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (gameStarted) return;
+      gameStarted = true;
+
+      startOverlay.style.display = "none";
+
+      safePlay(snoringSound);
+      safePlay(flyingSound);
+
+      mosquitoInterval = setInterval(spawnMosquito, 450);
+    }
+
+    startBtn.addEventListener("click", handleStartGame);
+    startBtn.addEventListener("touchstart", handleStartGame, {passive: false});
+
+    function updateLivesDisplay() {
+      if (lives === 3) livesDisplay.innerText = "❤️❤️❤️";
+      else if (lives === 2) livesDisplay.innerText = "❤️❤️🖤";
+      else if (lives === 1) livesDisplay.innerText = "❤️🖤🖤";
+      else livesDisplay.innerText = "🖤🖤🖤";
+    }
+
+    function showBiteEffect(x, y) {
+      container.classList.add("hit-flash");
+      setTimeout(() => container.classList.remove("hit-flash"), 200);
+
+      const biteText = document.createElement("div");
+      biteText.classList.add("bite-text");
+      biteText.innerText = "Ouch! -1";
+      biteText.style.left = x + "px";
+      biteText.style.top = y + "px";
+      container.appendChild(biteText);
+
+      setTimeout(() => biteText.remove(), 600);
+    }
+
+    function spawnMosquito() {
+      if (isGameOver) return;
+
+      const mosquito = document.createElement("div");
+      mosquito.classList.add("mosquito");
+
+      const mosquitoImg = document.createElement("img");
+
+      const side = Math.floor(Math.random() * 2);
+      let posX, posY;
+      let flyGif, deadGif;
+
+      if (side === 0) { 
+        posX = -80;
+        posY = Math.random() * (container.clientHeight - 150);
+        flyGif = "mos-fly-left.gif";
+        deadGif = "mos-dead-left.gif";
+      } else { 
+        posX = container.clientWidth;
+        posY = Math.random() * (container.clientHeight - 150);
+        flyGif = "mos-fly-right.gif";
+        deadGif = "mos-dead-right.gif";
+      }
+
+      mosquitoImg.src = flyGif;
+      mosquito.appendChild(mosquitoImg);
+
+      mosquito.style.left = posX + "px";
+      mosquito.style.top = posY + "px";
+
+      container.appendChild(mosquito);
+
+      const targetX = container.clientWidth / 2 - 30; 
+      const targetY = container.clientHeight - 120; 
+
+      let isAlive = true;
+
+      function killMosquito(e) {
+        if (!isGameOver && isAlive) {
+          if (e && e.cancelable) e.preventDefault();
+          if (e) e.stopPropagation();
+          isAlive = false;
+          score++;
+          scoreDisplay.innerText = score;
+
+          safePlay(slapSound);
+
+          if (score % 5 === 0) {
+            safePlay(killSounds[killSoundIndex]);
+            killSoundIndex = (killSoundIndex + 1) % killSounds.length;
+          }
+
+          mosquitoImg.src = deadGif + "?t=" + Date.now();
+
+          setTimeout(() => {
+            if (mosquito.parentNode) mosquito.remove();
+          }, 800);
+        }
+      }
+
+      mosquito.addEventListener("touchstart", killMosquito, {passive: false});
+      mosquito.addEventListener("mousedown", killMosquito);
+
+      const moveInterval = setInterval(() => {
+        if (isGameOver || !isAlive) {
+          clearInterval(moveInterval);
+          return;
+        }
+
+        const dx = targetX - posX;
+        const dy = targetY - posY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const speed = 3.2; 
+
+        posX += (dx / distance) * speed;
+        posY += (dy / distance) * speed;
+
+        mosquito.style.left = posX + "px";
+        mosquito.style.top = posY + "px";
+
+        if (distance < 45) {
+          isAlive = false;
+          clearInterval(moveInterval);
+          mosquito.remove();
+
+          lives--;
+          updateLivesDisplay();
+          showBiteEffect(posX, posY);
+
+          if (lives <= 0) {
+            isGameOver = true;
+            clearInterval(mosquitoInterval);
+
+            try {
+              snoringSound.pause();
+              flyingSound.pause();
+            } catch(e) {}
+            
+            safePlay(endingSound);
+
+            // ১. ঘুম ভাঙার অ্যানিমেশন একবার প্লে হবে[cite: 9]
+            dogImg.src = "doge-wake-up.gif?t=" + Date.now();
+
+            // ২. ১.২ সেকেন্ড পর ending.jfif ছবিটি পুরো স্ক্রিন জুড়ে কভার করে ভেসে উঠবে[cite: 9]
+            setTimeout(() => {
+              dogImg.src = "ending.jfif";
+              dogImg.classList.add("ending-screen");
+            }, 1200);
+
+            setTimeout(() => {
+              alert("গেম ওভার! কুকুর ঘুম থেকে উঠে পড়েছে!\nআপনার মোট স্কোর: " + score + "\nপুনরায় খেলতে রিফ্রেশ করুন।");
+            }, 1800);
+          }
+        }
+      }, 20);
+    }
+  </script>
+
+</body>
+</html>
